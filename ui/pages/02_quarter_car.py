@@ -39,7 +39,8 @@ import time
 import traceback
 from pathlib import Path
 from typing import Any
-
+from analytics.race_engineer import generate_race_engineer_report
+from physics.decision_engine import generate_setup_verdict
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -55,6 +56,7 @@ from physics.quarter_car import (
     RoadProfile,
     run_quarter_car_analysis,
 )
+from analytics.race_engineer import generate_race_engineer_report
 from visualization.telemetry_plots import (
     create_bode_plot,
     create_impulse_response_plot,
@@ -1075,7 +1077,27 @@ def _render_sidebar() -> tuple[QuarterCarParams, RoadProfile, float, float, int,
                 value=5.0, step=0.5,
                 format="%.1f",
             )
-
+        # ── Setup Solver (AI) ─────────────────────────────────────────────
+        with st.expander("▸  SETUP SOLVER (AI)", expanded=False):
+            st.markdown('<div class="sidebar-sec">OPTIMIZATION GOAL</div>',
+                        unsafe_allow_html=True)
+            opt_goal = st.selectbox(
+                "Target Objective",
+                options=["Ride Comfort", "Balanced", "Min Travel"],
+                index=0,
+                key="opt_goal_select"   # <-- ADDED UNIQUE KEY
+            )
+            max_travel_mm = st.number_input(
+                "Max Allowed Travel [mm]",
+                min_value=10.0, max_value=150.0, value=50.0, step=5.0,
+                key="max_travel_input"  # <-- ADDED UNIQUE KEY
+            )
+            st.markdown("<br/>", unsafe_allow_html=True)
+            opt_clicked = st.button(
+                "⚡ OPTIMIZE SETUP",
+                use_container_width=True,
+                key="opt_btn",
+            )
         # ── Analysis Options ──────────────────────────────────────────────
         with st.expander("▸  ANALYSIS OPTIONS", expanded=False):
             st.markdown('<div class="sidebar-sec">FREQUENCY SWEEP</div>',
@@ -1125,7 +1147,7 @@ def _render_sidebar() -> tuple[QuarterCarParams, RoadProfile, float, float, int,
         frequency    = float(road_freq),
         duration     = float(duration),
     )
-    return params, profile, float(f_min), float(f_max), int(n_freq), run_clicked
+    return params, profile, float(f_min), float(f_max), int(n_freq), run_clicked, opt_goal, float(max_travel_mm), opt_clicked
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1199,7 +1221,7 @@ def main() -> None:
     _render_header()
 
     # ── Sidebar inputs ────────────────────────────────────────────────────
-    params, profile, f_min, f_max, n_freq, run_clicked = _render_sidebar()
+    params, profile, f_min, f_max, n_freq, run_clicked, opt_goal, max_travel_mm, opt_clicked = _render_sidebar()
 
     # ── Session state — cache last valid result ───────────────────────────
     if "qc_result"  not in st.session_state:
@@ -1233,23 +1255,73 @@ def main() -> None:
         st.session_state["qc_profile"] = profile
         st.session_state["qc_elapsed"] = elapsed_ms
 
+    # ── AI Optimizer Execution ────────────────────────────────────────────
+    if opt_clicked:
+        with st.spinner("◈  AI OPTIMIZER RUNNING (L-BFGS-B)…"):
+            from physics.optimizer import optimize_setup
+            opt_res = optimize_setup(params, profile, opt_goal, max_travel_mm / 1000.0)
+
+            if opt_res["success"]:
+                # Run the simulation with the newly optimized parameters
+                opt_params = QuarterCarParams(
+                    m_s=params.m_s, m_u=params.m_u, k_s=opt_res["optimal_ks"],
+                    c=opt_res["optimal_c"], k_t=params.k_t, MR=params.MR, c_t=params.c_t
+                )
+                optimal_result, opt_elapsed_ms, _ = _run_simulation(opt_params, profile, f_min, f_max, n_freq)
+                baseline_result = st.session_state.get("qc_result") or optimal_result
+                
+                # Calculate improvements
+                accel_imp = ((baseline_result.rms_body_accel - optimal_result.rms_body_accel) / baseline_result.rms_body_accel) * 100
+                travel_imp = ((baseline_result.peak_susp_travel - optimal_result.peak_susp_travel) / baseline_result.peak_susp_travel) * 100
+
+                st.success(
+                    f"**◈ OPTIMIZATION COMPLETE**\n\n"
+                    f"**Recommended Spring Rate:** `{opt_res['optimal_ks']:,.0f} N/m`\n\n"
+                    f"**Recommended Damping:** `{opt_res['optimal_c']:,.0f} Ns/m`\n\n"
+                    f"**Estimated Changes:**\n\n"
+                    f"• Ride Comfort: `{'+' if accel_imp > 0 else ''}{accel_imp:.1f}%`\n\n"
+                    f"• Suspension Travel: `{'+' if travel_imp > 0 else ''}{travel_imp:.1f}%`"
+                )
+
+                # ── Generate and Display the AI Verdict ──
+                verdict = generate_setup_verdict(optimal_result, opt_res)
+                
+                st.markdown("<br/>", unsafe_allow_html=True)
+                if verdict["status"] == "ALIGNED":
+                    st.info(
+                        f"**{verdict['headline']}**\n\n"
+                        f"{verdict['message']}\n\n"
+                        f"**Recommended Action:** {verdict['action']}", 
+                        icon="✅"
+                    )
+                else:
+                    st.warning(
+                        f"**{verdict['headline']}**\n\n"
+                        f"{verdict['message']}\n\n"
+                        f"**Recommended Action:** {verdict['action']}", 
+                        icon="⚠️"
+                    )
+
+                # Override session state to instantly plot the optimal setup across the dashboard
+                st.session_state["qc_result"] = optimal_result
+                st.session_state["qc_params"] = opt_params
+                st.session_state["qc_profile"] = profile
+                st.session_state["qc_elapsed"] = opt_elapsed_ms
+            else:
+                st.error("Optimization failed to converge. Try relaxing the max travel constraint.")
+
     # ── Retrieve cached result ────────────────────────────────────────────
     result:  QuarterCarResult = st.session_state["qc_result"]
-    params:  QuarterCarParams = st.session_state["qc_params"]
-    profile: RoadProfile      = st.session_state["qc_profile"]
-    elapsed: float            = st.session_state["qc_elapsed"]
-
-    if result is None:
-        st.info("Configure parameters in the sidebar and press **▶ RUN ANALYSIS**.",
-                icon="🏎️")
-        return
 
     # ─────────────────────────────────────────────────────────────────────
     # KPI Telemetry Strip
     # ─────────────────────────────────────────────────────────────────────
     _section("◈  TELEMETRY  —  KEY PERFORMANCE INDICATORS")
     _render_kpi_strip(result)
-    _render_run_banner(result, elapsed)
+    
+    # Safely retrieve elapsed time from session state
+    current_elapsed_ms = st.session_state.get("qc_elapsed", 0.0)
+    _render_run_banner(result, current_elapsed_ms)
 
     # ─────────────────────────────────────────────────────────────────────
     # Overview Dashboard (4-panel)
@@ -1327,8 +1399,29 @@ def main() -> None:
     # Engineering Insights
     # ─────────────────────────────────────────────────────────────────────
     _render_insights(result)
-
     # ─────────────────────────────────────────────────────────────────────
+    # Automated Race Engineer (Prescriptive Analytics)
+    # ─────────────────────────────────────────────────────────────────────
+    st.markdown('<div class="section-hdr">◈  RACE ENGINEER RECOMMENDATIONS</div>', unsafe_allow_html=True)
+    
+    report = generate_race_engineer_report(result)
+    
+    if not report.recommendations:
+        st.success("The Race Engineer found no major issues. Setup looks solid.")
+    else:
+        for rec in report.recommendations:
+            # Format confidence as a percentage badge
+            conf_str = f"[{rec.confidence * 100:.0f}% CONFIDENCE]"
+            
+            # Route UI color based on Severity Enum
+            if rec.severity.value == "CRITICAL":
+                st.error(f"**{rec.category} | {rec.diagnosis}** `{conf_str}`\n\n**Finding:** {rec.finding}\n\n**Action:** {rec.action}")
+            elif rec.severity.value == "WARNING":
+                st.warning(f"**{rec.category} | {rec.diagnosis}** `{conf_str}`\n\n**Finding:** {rec.finding}\n\n**Action:** {rec.action}")
+            else:
+                st.info(f"**{rec.category} | {rec.diagnosis}** `{conf_str}`\n\n**Finding:** {rec.finding}\n\n**Action:** {rec.action}")
+
+    # ───────────────────────────────────────────────────────────────────── 
     # Modal Summary Table
     # ─────────────────────────────────────────────────────────────────────
     _section("◈  MODAL ANALYSIS SUMMARY")
