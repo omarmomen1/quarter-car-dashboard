@@ -1,0 +1,19 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+Pipfile.lock
+
+# Streamlit
+.streamlit/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
