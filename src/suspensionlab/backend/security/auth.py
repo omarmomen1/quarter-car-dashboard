@@ -80,7 +80,7 @@ async def verify_api_key(
         # 2a. Master admin key (dev/CI only — warn if used in PROD)
         from suspensionlab.backend.config import settings
         import os
-        if api_key == settings.admin_api_key:
+        if settings.admin_api_key and api_key == settings.admin_api_key:
             if os.getenv("ENVIRONMENT", "DEV") == "PROD":
                 raise AuthenticationError("Master API key is disabled in production.")
             # Use a deterministic UUID for the admin user so downstream uuid.UUID() calls succeed

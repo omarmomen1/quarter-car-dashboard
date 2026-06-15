@@ -177,14 +177,17 @@ async def lemon_squeezy_webhook(request: Request, db: AsyncSession = Depends(get
     signature = request.headers.get("X-Signature", "")
 
     # Verify HMAC-SHA256 signature
-    digest = hmac.new(
-        LEMON_SQUEEZY_WEBHOOK_SECRET.encode(),
-        payload,
-        hashlib.sha256
-    ).hexdigest()
+    try:
+        digest = hmac.new(
+            LEMON_SQUEEZY_WEBHOOK_SECRET.encode("utf-8"),
+            payload,
+            hashlib.sha256
+        ).hexdigest()
 
-    if not hmac.compare_digest(digest, signature):
-        raise HTTPException(status_code=400, detail="Invalid signature")
+        if not hmac.compare_digest(digest, signature):
+            raise HTTPException(status_code=400, detail="Invalid signature")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Signature verification failed")
 
     try:
         payload_dict = json.loads(payload)

@@ -27,8 +27,8 @@ class Settings:
         return get_env_or_fail("API_KEY", "dev_secret_key")
         
     @property
-    def admin_api_key(self) -> str:
-        return get_env_or_fail("ADMIN_API_KEY", "dev_admin_key")
+    def admin_api_key(self) -> str | None:
+        return os.environ.get("ADMIN_API_KEY")
     
     @property
     def allow_origins(self) -> list[str]:

@@ -58,12 +58,25 @@ async def redis_listener(session_id: str):
 
 router = APIRouter(prefix="/ws", tags=["Websockets"])
 
+from fastapi import Query, status
+
 @router.websocket("/sessions/{session_id}")
-async def websocket_session_endpoint(websocket: WebSocket, session_id: str):
+async def websocket_session_endpoint(
+    websocket: WebSocket, 
+    session_id: str,
+    token: str = Query(..., description="Bearer JWT for authentication")
+):
     """
     Real-time collaboration websocket.
-    Requires authentication in production, usually via a short-lived ticket or cookie.
+    Requires authentication via token.
     """
+    try:
+        from suspensionlab.backend.security.jwt_utils import decode_access_token
+        user_data = decode_access_token(token)
+    except Exception:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     await manager.connect(websocket, session_id)
     
     # Ideally, trigger a background task for redis_listener here if not already running for this session.
