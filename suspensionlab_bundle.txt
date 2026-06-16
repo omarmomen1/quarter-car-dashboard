@@ -13299,7 +13299,7 @@ export default function CompareAdamsPage() {
             The Next Generation of CAE
           </div>
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
-            The Modern Alternative to <span className="text-gray-400">MSC Adams</span>
+            The Modern Alternative to <span className="text-gray-400">Legacy Desktop CAE</span>
           </h1>
           <p className="text-xl text-gray-400 mb-10 max-w-2xl mx-auto leading-relaxed">
             Stop fighting with legacy 90s software interfaces, 20GB downloads, and archaic license servers. 
