@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import dynamic from "next/dynamic";
-
-// Dynamically import to handle SSR
-const ReportClient = dynamic(() => import("./ReportClient"), { ssr: false });
+import ReportClient from "./ReportClient";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
