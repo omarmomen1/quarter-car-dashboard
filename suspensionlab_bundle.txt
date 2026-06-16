@@ -83,6 +83,7 @@ select = ["E", "F", "I", "N", "W"]
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@types/three": "^0.184.1",
+    "@vercel/og": "^0.11.1",
     "html2canvas": "^1.4.1",
     "jose": "^6.2.3",
     "jspdf": "^4.2.1",
@@ -2299,6 +2300,11 @@ Rules:
         lines = raw.split("\n")
         raw = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
 
+    import re
+    json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+    if json_match:
+        raw = json_match.group(0)
+
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError as e:
@@ -3046,7 +3052,7 @@ def _compute_durability(req: DurabilityRequest) -> DurabilityResult:
         life_cycles = ref_cycles * ((ref_rms / current_rms) ** m)
 
         # Convert to km: 1 cycle ≈ speed_mps / (dominant_freq ≈ 2 Hz) meters
-        meters_per_cycle = speed_mps / 2.0
+        meters_per_cycle = speed_mps / max(result.f_n_s, 0.1)
         life_km = (life_cycles * meters_per_cycle) / 1000.0
         life_km = min(life_km, 999_999)  # Cap at ~1M km
 
@@ -13200,6 +13206,101 @@ export default function AIEngineerPage() {
 }
 
 
+--- FILE: frontend/app/api/og/route.tsx ---
+import { ImageResponse } from "@vercel/og";
+import { NextRequest } from "next/server";
+
+export const runtime = "edge";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+export async function GET(req: NextRequest) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const token = searchParams.get("token");
+
+    if (!token) {
+      return new ImageResponse(<div style={{ background: "black", color: "white" }}>Invalid Token</div>, { width: 1200, height: 630 });
+    }
+
+    const res = await fetch(`${API_BASE}/reports/${token}`);
+    if (!res.ok) {
+      return new ImageResponse(<div style={{ background: "black", color: "white" }}>Report Not Found</div>, { width: 1200, height: 630 });
+    }
+
+    const report = await res.json();
+    const r = report.result;
+
+    const comfort = r.comfort_rating || "Simulation Result";
+    const title = report.title || "Suspension Analysis";
+
+    return new ImageResponse(
+      (
+        <div
+          style={{
+            background: "#080808",
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: "sans-serif",
+            border: "12px solid #1a1a1a",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#111",
+              padding: "40px 80px",
+              borderRadius: "24px",
+              border: "2px solid #222",
+            }}
+          >
+            <h2 style={{ fontSize: 32, color: "#f2a900", margin: 0, textTransform: "uppercase", letterSpacing: "2px" }}>
+              SuspensionLab Report
+            </h2>
+            <h1 style={{ fontSize: 72, color: "white", margin: "20px 0 40px 0", textAlign: "center", fontWeight: "bold" }}>
+              {title}
+            </h1>
+            
+            <div style={{ display: "flex", gap: "40px" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <span style={{ fontSize: 24, color: "#888", marginBottom: "8px" }}>Comfort Rating</span>
+                <span style={{ fontSize: 48, color: "#fff", fontWeight: "bold" }}>{comfort}</span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <span style={{ fontSize: 24, color: "#888", marginBottom: "8px" }}>Peak Body Accel</span>
+                <span style={{ fontSize: 48, color: "#fff", fontWeight: "bold" }}>
+                  {typeof r.rms_body_accel === "number" ? r.rms_body_accel.toFixed(2) : "—"} m/s²
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div style={{ position: "absolute", bottom: 40, fontSize: 24, color: "#666" }}>
+            Generated with SuspensionLab.io
+          </div>
+        </div>
+      ),
+      {
+        width: 1200,
+        height: 630,
+      }
+    );
+  } catch (e: any) {
+    console.log(`${e.message}`);
+    return new Response(`Failed to generate the image`, {
+      status: 500,
+    });
+  }
+}
+
+
 --- FILE: frontend/app/auth/layout.tsx ---
 import type { Metadata } from "next";
 import "../globals.css";
@@ -18010,6 +18111,7 @@ export async function generateMetadata({ params }: { params: { token: string } }
       title: report.title,
       description: "Professional suspension simulation by SuspensionLab",
       siteName: "SuspensionLab",
+      images: [`/api/og?token=${report.token}`],
     },
   };
 }
@@ -18210,16 +18312,26 @@ export default function ReportClient({ report }: { report: ReportData }) {
         </div>
 
         {/* CTA */}
-        <div className="rounded-2xl border border-[#f2a900]/20 bg-[#f2a900]/5 p-6 text-center space-y-3">
+        <div className="rounded-2xl border border-[#f2a900]/20 bg-[#f2a900]/5 p-6 text-center space-y-3 mt-6">
           <h3 className="text-lg font-bold text-white">Run your own suspension simulations</h3>
-          <p className="text-sm text-gray-400">SuspensionLab — Professional vehicle dynamics simulation in your browser. No MATLAB required.</p>
-          <a
-            href="/"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#f2a900] text-black font-bold text-sm hover:brightness-110 transition-all"
-          >
-            <ExternalLink size={14} />
-            Start Free at SuspensionLab
-          </a>
+          <p className="text-sm text-gray-400">
+            This analysis used a Spring Rate of {typeof p.k_s === "number" ? p.k_s.toLocaleString() : "..."} N/m and achieved ISO 2631-1 comfort rating: <strong className="text-white">{r.comfort_rating as string || "..."}</strong>.
+          </p>
+          <div className="flex justify-center gap-4 mt-4">
+            <a
+              href="/"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#222] text-white font-bold text-sm hover:bg-[#333] transition-all"
+            >
+              Start Free
+            </a>
+            <a
+              href={`/${report.simulation_type}?${new URLSearchParams(p as any).toString()}`}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#f2a900] text-black font-bold text-sm hover:brightness-110 transition-all"
+            >
+              <ExternalLink size={14} />
+              Clone This Setup
+            </a>
+          </div>
         </div>
       </div>
     </div>

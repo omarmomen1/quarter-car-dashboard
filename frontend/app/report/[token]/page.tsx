@@ -29,6 +29,7 @@ export async function generateMetadata({ params }: { params: { token: string } }
       title: report.title,
       description: "Professional suspension simulation by SuspensionLab",
       siteName: "SuspensionLab",
+      images: [`/api/og?token=${report.token}`],
     },
   };
 }

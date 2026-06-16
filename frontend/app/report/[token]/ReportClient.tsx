@@ -186,16 +186,26 @@ export default function ReportClient({ report }: { report: ReportData }) {
         </div>
 
         {/* CTA */}
-        <div className="rounded-2xl border border-[#f2a900]/20 bg-[#f2a900]/5 p-6 text-center space-y-3">
+        <div className="rounded-2xl border border-[#f2a900]/20 bg-[#f2a900]/5 p-6 text-center space-y-3 mt-6">
           <h3 className="text-lg font-bold text-white">Run your own suspension simulations</h3>
-          <p className="text-sm text-gray-400">SuspensionLab — Professional vehicle dynamics simulation in your browser. No MATLAB required.</p>
-          <a
-            href="/"
-            className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#f2a900] text-black font-bold text-sm hover:brightness-110 transition-all"
-          >
-            <ExternalLink size={14} />
-            Start Free at SuspensionLab
-          </a>
+          <p className="text-sm text-gray-400">
+            This analysis used a Spring Rate of {typeof p.k_s === "number" ? p.k_s.toLocaleString() : "..."} N/m and achieved ISO 2631-1 comfort rating: <strong className="text-white">{r.comfort_rating as string || "..."}</strong>.
+          </p>
+          <div className="flex justify-center gap-4 mt-4">
+            <a
+              href="/"
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#222] text-white font-bold text-sm hover:bg-[#333] transition-all"
+            >
+              Start Free
+            </a>
+            <a
+              href={`/${report.simulation_type}?${new URLSearchParams(p as any).toString()}`}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#f2a900] text-black font-bold text-sm hover:brightness-110 transition-all"
+            >
+              <ExternalLink size={14} />
+              Clone This Setup
+            </a>
+          </div>
         </div>
       </div>
     </div>

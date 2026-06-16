@@ -171,7 +171,7 @@ def _compute_durability(req: DurabilityRequest) -> DurabilityResult:
         life_cycles = ref_cycles * ((ref_rms / current_rms) ** m)
 
         # Convert to km: 1 cycle ≈ speed_mps / (dominant_freq ≈ 2 Hz) meters
-        meters_per_cycle = speed_mps / 2.0
+        meters_per_cycle = speed_mps / max(result.f_n_s, 0.1)
         life_km = (life_cycles * meters_per_cycle) / 1000.0
         life_km = min(life_km, 999_999)  # Cap at ~1M km
 

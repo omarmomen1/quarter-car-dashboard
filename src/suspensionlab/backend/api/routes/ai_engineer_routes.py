@@ -212,6 +212,11 @@ Rules:
         lines = raw.split("\n")
         raw = "\n".join(lines[1:-1] if lines[-1] == "```" else lines[1:])
 
+    import re
+    json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+    if json_match:
+        raw = json_match.group(0)
+
     try:
         parsed = json.loads(raw)
     except json.JSONDecodeError as e:
