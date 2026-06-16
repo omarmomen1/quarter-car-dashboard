@@ -5,8 +5,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from suspensionlab.backend.database.core import get_db_dependency
-from suspensionlab.backend.database.models import User
-from suspensionlab.backend.auth import verify_api_key, PlanTier
+from suspensionlab.backend.database.models.user import User
+from suspensionlab.backend.security.auth import verify_api_key, PlanTier
 from suspensionlab.backend.config import settings
 import logging
 
