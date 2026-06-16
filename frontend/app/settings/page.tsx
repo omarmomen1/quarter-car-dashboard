@@ -363,9 +363,9 @@ export default function SettingsPage() {
                     <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />
                     <div>
                       <p className="text-sm font-semibold text-amber-400">Password reset</p>
-                      <p className="text-xs text-gray-600 mt-0.5">
-                        Password reset via email is coming soon. To change your password now, contact{" "}
-                        <a href="mailto:support@suspensionlab.io" className="text-ansys-yellow">support@suspensionlab.io</a>.
+                      <p className="text-xs text-gray-400 max-w-sm text-center">
+                        If you believe this is an error, please contact <br/>
+                        <a href="mailto:suspensionlab.support@gmail.com" className="text-ansys-yellow">suspensionlab.support@gmail.com</a>.
                       </p>
                     </div>
                   </div>
