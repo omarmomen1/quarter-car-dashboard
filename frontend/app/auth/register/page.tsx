@@ -47,16 +47,7 @@ export default function RegisterPage() {
 
   return (
     <div className="bg-[#111113] border border-[#252525] rounded-2xl p-8 shadow-2xl">
-      {/* Trial badge */}
-      <div className="text-center mb-5">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-ansys-yellow/10 border border-ansys-yellow/20
-          text-ansys-yellow text-[10px] font-bold uppercase tracking-wider rounded-full">
-          <CheckCircle2 size={11} /> 14-Day Pro Trial — No Credit Card Required
-        </span>
-      </div>
-
-      <h1 className="text-xl font-bold text-white mb-1 text-center">Create your account</h1>
-      <p className="text-sm text-gray-500 mb-6 text-center">Full Pro access, free for 14 days</p>
+      <h1 className="text-xl font-bold text-white mb-6 text-center">Create your account</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -114,7 +105,7 @@ export default function RegisterPage() {
           className="w-full py-2.5 bg-ansys-yellow text-black text-sm font-bold rounded-xl
             hover:brightness-110 transition-all shadow-[0_0_16px_rgba(242,169,0,0.2)]
             disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-          {loading ? <><Loader2 size={14} className="animate-spin" /> Creating account…</> : "Start Free Trial"}
+          {loading ? <><Loader2 size={14} className="animate-spin" /> Creating account…</> : "Create Account"}
         </button>
 
         <p className="text-[10px] text-gray-700 text-center">

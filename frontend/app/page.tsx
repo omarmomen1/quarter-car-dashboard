@@ -43,7 +43,7 @@ export default function Home() {
         </p>
         <div className="flex items-center gap-4 relative z-10">
           <Link href="/pricing" className="px-8 py-4 bg-white text-black font-semibold rounded-full hover:bg-gray-200 transition-transform hover:scale-105 active:scale-95">
-            Subscribe Now — $300/mo
+            Get Pro Access — $50
           </Link>
           <Link href="/quarter-car" className="px-8 py-4 bg-transparent text-white font-semibold rounded-full border border-white/20 hover:bg-white/5 transition-colors flex items-center gap-2">
             Try Demo <Play size={16} fill="currentColor" />
