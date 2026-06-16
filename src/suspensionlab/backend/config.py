@@ -83,6 +83,8 @@ class Settings:
         # Railway/Render provide postgres:// URIs; SQLAlchemy needs postgresql+asyncpg://
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://"):
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         return url
 
     @property
