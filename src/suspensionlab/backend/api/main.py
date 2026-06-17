@@ -67,8 +67,8 @@ async def lifespan(app: FastAPI):
     from suspensionlab.backend.database.models.shared_report import SharedReport  # noqa: F401
     
     async with engine.begin() as conn:
-        # Tables are managed by Alembic in production.
-        # await conn.run_sync(Base.metadata.create_all)
+        # Tables are automatically created if they don't exist
+        await conn.run_sync(Base.metadata.create_all)
         
         # Dev/local auto-seed
         if settings.environment == "DEV":
