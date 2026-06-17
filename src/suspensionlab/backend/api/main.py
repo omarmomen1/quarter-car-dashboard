@@ -68,7 +68,13 @@ async def lifespan(app: FastAPI):
     
     async with engine.begin() as conn:
         # Tables are automatically created if they don't exist
-        await conn.run_sync(Base.metadata.create_all)
+        try:
+            await conn.run_sync(Base.metadata.create_all)
+        except Exception as e:
+            # When multiple workers start concurrently, PostgreSQL may raise 
+            # UniqueViolationError or ProgrammingError during concurrent table creation.
+            import logging
+            logging.warning(f"Ignored error during create_all (expected in multi-worker setup): {e}")
         
         # Dev/local auto-seed
         if settings.environment == "DEV":
