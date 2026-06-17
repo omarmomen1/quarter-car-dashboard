@@ -78,22 +78,26 @@ async def lifespan(app: FastAPI):
         
         # Dev/local auto-seed
         if settings.environment == "DEV":
-            from sqlalchemy import select, func
-            result = await conn.execute(select(func.count()).select_from(User))
-            count = result.scalar()
-            
-            if count == 0:
-                from suspensionlab.backend.security.jwt_utils import hash_password
-                await conn.execute(
-                    User.__table__.insert().values(
-                        email="admin@suspensionlab.pro",
-                        password_hash=hash_password("change-me-immediately"),
-                        api_key=settings.api_key,
-                        onboarding_complete=False,
-                        plan="ENTERPRISE",
-                        is_admin=True
+            try:
+                from sqlalchemy import select, func
+                result = await conn.execute(select(func.count()).select_from(User))
+                count = result.scalar()
+                
+                if count == 0:
+                    from suspensionlab.backend.security.jwt_utils import hash_password
+                    await conn.execute(
+                        User.__table__.insert().values(
+                            email="admin@suspensionlab.pro",
+                            password_hash=hash_password("change-me-immediately"),
+                            api_key=settings.api_key,
+                            onboarding_complete=False,
+                            plan="ENTERPRISE",
+                            is_admin=True
+                        )
                     )
-                )
+            except Exception as e:
+                import logging
+                logging.warning(f"Ignored error during auto-seed (expected if tables are still creating): {e}")
         
     await init_async_redis()
     yield
