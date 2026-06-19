@@ -24,7 +24,11 @@ async_redis_conn: aioredis.Redis | None = None
 
 async def init_async_redis():
     global async_redis_conn
-    redis_url = os.getenv("REDIS_URL", "redis://redis:6379/0")
+    redis_url = os.getenv("REDIS_URL", "")
+    if not redis_url:
+        import logging
+        logging.warning("REDIS_URL not set — async Redis features (job locking) will be unavailable.")
+        return
     async_redis_conn = aioredis.from_url(redis_url)
 
 async def close_async_redis():
